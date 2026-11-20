@@ -4,10 +4,11 @@
 #include <algorithm>
 #include <iomanip>
 #include <cctype>
+#include <random> //fixed 1.
 
 // Abstract Base Class
 class BaseGame {
-
+protected: //added 2.
     std::string m_secretCode;
     int m_maxAttempts;
     int m_currentAttempts;
@@ -15,12 +16,12 @@ class BaseGame {
     std::string m_correct;
 
     // Functions that must be implemented by derived classes
-    void generateSecretCode();
-    bool isValidGuess(const std::string& guess) const ;
-    std::string getGameModeRules() const ;
+    virtual void generateSecretCode() = 0;
+    virtual bool isValidGuess(const std::string& guess) const = 0;
+    virtual std::string getGameModeRules() const = 0;
 
     // Inherited helper function to check for duplicate characters
-    void hasUniqueCharacters(const std::string& str) const {
+    static bool hasUniqueCharacters(const std::string& str) { //changed return type
         for (size_t i = 0; i < str.length(); ++i) {
             for (size_t j = i + 1; j < str.length(); ++j) {
                 if (str[i] == str[j]) return false;
@@ -45,7 +46,7 @@ class BaseGame {
         return {red, white};
     }
 
-public:
+public: //4
     BaseGame(int length, int attempts){
         m_codeLength = length;
         m_maxAttempts = attempts;
@@ -59,7 +60,7 @@ public:
     // Inherited method for controlling the main game flow
     void play() {
         // call to generate a secret code
-
+        generateSecretCode();
         std::cout << "\n--- Starting Game ---\n";
         std::cout << getGameModeRules() << "\n";
         std::cout << "You have " << m_maxAttempts << " attempts.\n\n";
@@ -77,10 +78,14 @@ public:
             m_currentAttempts++;
             auto [red, white] = calculateRedAndWhite(guess);
 
+
             if (red == m_codeLength) {
                 std::cout << "\nCongratulations! You guessed the secret code: " << m_secretCode << "\n";
                 return;
             }
+
+
+
             std::cout << "Correct ->" << m_correct << std::endl;
             std::cout << "Result: " << red << " Red(s), " << white << " White(s)\n\n";
         }
@@ -90,8 +95,8 @@ public:
 };
 
 // Derived Class 1: 4-Digit Number Mode
-class NumericGame {
-protected:
+class NumericGame : public BaseGame { //added 5.
+protected: //6
     void generateSecretCode() override {
         std::string digits = "0123456789";
         std::random_device rd;
@@ -112,14 +117,14 @@ protected:
         return "Mode: Numbers. Guess a " + std::to_string(m_codeLength) + "-digit number with unique digits (0-9).";
     }
 
-
+public: //added 7.
     NumericGame(int length = 4, int attempts = 10): BaseGame(length, attempts) {
          m_correct = "xxxx";
     }
 };
 
 // Derived Class 2: Isogram Word Mode
-class WordGame  {
+class WordGame : public BaseGame  { //added 8.
 private:
     std::vector<std::string> wordBank = {"plane", "steam", "coast", "bride", "white", "false"};
 
@@ -144,7 +149,7 @@ protected:
         return "Mode: Word Isogram. Guess a " + std::to_string(m_codeLength) + "-letter lowercase word with no repeating letters.";
     }
 
-
+public:
     WordGame(int attempts = 10): BaseGame(5, attempts) {
         m_correct = "xxxxx";
     }
@@ -153,9 +158,11 @@ protected:
 int main() {
     int choice;
     std::cout << "Select Game Mode:\n1. Number Mode (4 digits)\n2. Word Mode (6 letters)\nChoice: ";
+    std::cin >> choice; //added
 
 
     // Create a polymorphic pointer that can point to a BaseGame object or any class of object derived from BaseGame
+    std::unique_ptr<BaseGame> game;//added
     // Currently hold nullptr (nothing)
     // unique_ptr means the object will automatically be deleted when it goes out of scope to prevent memory leak
 
@@ -163,12 +170,15 @@ int main() {
     if (choice == 2) {
         // Instantiate a new WordGame object on heap memory passing 10 to the constructor
         // Then assign assign ownership of the object to the game pointer
+        game = std::make_unique<WordGame>(10); //added
+
 
     } else {
         // Instantiate a new NumericGame object on heap memory passing 4 and 10 to the constructor
         // Then assign assign ownership of the object to the game pointer
-
+        game = std::make_unique<NumericGame>(4, 10); //added
     }
+    game->play();
 
     /*
      * Unified Interface: Even though WordGame and NumericGame are different classes, storing them in a
